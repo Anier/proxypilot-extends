@@ -105,6 +105,30 @@ export function validateNormalized(domain) {
 }
 
 /**
+ * Validates a wildcard base domain (the part after `*.`). Allows single-label
+ * domains because the wildcard prefix already constrains matching semantics:
+ * `*.google` means "any subdomain of google", which is unambiguous even without
+ * an explicit TLD. Still rejects empty labels, overly long labels, and invalid
+ * characters.
+ */
+export function validateWildcardBase(domain) {
+  if (!domain || typeof domain !== 'string') return false;
+  if (domain.length > 253) return false;
+
+  // Looks IPv4-ish? Must be a real IPv4 then.
+  if (/^[\d.]+$/.test(domain)) {
+    return isIPv4(domain);
+  }
+
+  const labels = domain.split('.');
+  for (const label of labels) {
+    if (label.length < 1 || label.length > 63) return false;
+    if (!LABEL_RE.test(label)) return false;
+  }
+  return true;
+}
+
+/**
  * Parse a user-entered entry into { value, mode }. Recognizes leading *.  and =
  * prefixes for wildcard and exact match modes; otherwise defaults to suffix mode.
  * Normalizes and validates the resulting hostname. Throws ValidationError on bad input.
@@ -123,7 +147,11 @@ export function parseEntry(input) {
   }
 
   const value = normalizeDomain(raw);
-  if (!validateNormalized(value)) {
+  if (mode === 'wildcard') {
+    if (!validateWildcardBase(value)) {
+      throw new ValidationError('invalid', [input]);
+    }
+  } else if (!validateNormalized(value)) {
     throw new ValidationError('invalid', [input]);
   }
   return { value, mode };

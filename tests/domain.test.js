@@ -110,7 +110,7 @@ test('validateNormalized: rejects total length > 253', () => {
   assert.equal(validateNormalized(longDomain), false);
 });
 
-import { parseEntry } from '../extension/lib/domain.js';
+import { parseEntry, validateWildcardBase } from '../extension/lib/domain.js';
 
 test('parseEntry: plain domain → suffix mode', () => {
   assert.deepEqual(parseEntry('example.com'), { value: 'example.com', mode: 'suffix' });
@@ -156,6 +156,42 @@ test('parseEntry: rejects bare *.', () => {
 
 test('parseEntry: rejects bare =', () => {
   assert.throws(() => parseEntry('='), ValidationError);
+});
+
+test('parseEntry: accepts single-label wildcard base (*.google)', () => {
+  assert.deepEqual(parseEntry('*.google'), { value: 'google', mode: 'wildcard' });
+});
+
+test('parseEntry: accepts single-label wildcard base with mixed case', () => {
+  assert.deepEqual(parseEntry('*.Google'), { value: 'google', mode: 'wildcard' });
+});
+
+test('parseEntry: rejects invalid single-label wildcard base (*.-bad)', () => {
+  assert.throws(() => parseEntry('*.-bad'), ValidationError);
+});
+
+test('parseEntry: rejects empty single-label wildcard base (*. )', () => {
+  assert.throws(() => parseEntry('*.'), ValidationError);
+});
+
+test('validateWildcardBase: accepts single-label domain', () => {
+  assert.equal(validateWildcardBase('google'), true);
+});
+
+test('validateWildcardBase: accepts multi-label domain', () => {
+  assert.equal(validateWildcardBase('example.com'), true);
+});
+
+test('validateWildcardBase: rejects empty', () => {
+  assert.equal(validateWildcardBase(''), false);
+});
+
+test('validateWildcardBase: rejects bare label with leading hyphen', () => {
+  assert.equal(validateWildcardBase('-bad'), false);
+});
+
+test('validateWildcardBase: rejects bare label with trailing hyphen', () => {
+  assert.equal(validateWildcardBase('bad-'), false);
 });
 
 test('normalizeDomain: rejects IPv6 literal in brackets', () => {
